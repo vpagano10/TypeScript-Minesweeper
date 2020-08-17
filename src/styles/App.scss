@@ -1,0 +1,42 @@
+@mixin borders($topLeft: #7b7b7b, $bottomRight: white) {
+  border-width: 4px;
+  border-style: solid;
+  border-right-color: $bottomRight;
+  border-bottom-color: $bottomRight;
+  border-left-color: $topLeft;
+  border-top-color: $topLeft;
+}
+
+.app {
+  @include borders(white, #999);
+  background: #c2c2c2;
+  padding: 16px;
+}
+
+.header {
+  @include borders;
+  background: #c0c0c0;
+  padding: 10 px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.body {
+  @include borders;
+  margin-top: 16px;
+  display: grid;
+  grid-template-rows: repeat(9, 1fr);
+  grid-template-columns: repeat(9, 1fr);
+}
+
+.face {
+  @include borders(white, #7b7b7b);
+  width: 52px;
+  height: 52px;
+  font-size: 35px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}

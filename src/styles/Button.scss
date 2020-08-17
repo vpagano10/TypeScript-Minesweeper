@@ -1,0 +1,7 @@
+@import "./App.scss";
+
+.button {
+  @include borders(white, #7b7b7b);
+  width: 30px;
+  height: 30px;
+}
