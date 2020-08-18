@@ -1,113 +1,79 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NumberDisplay } from "./components/NumberDisplay";
-import { CellValue, CellState, Cell } from "./types";
 import { Buttons } from "./components/Button";
+import { generateCells } from "./components/BuildGameBoard";
+import { Face, Cell, CellState } from "./types";
 import "./styles/App.scss";
 
-// BUILD GAME BOARD
-const MAX_ROWS: number = 9;
-const MAX_COLS: number = 9;
-const NUM_MINES: number = 10;
-const generateCells = (): Cell[][] => {
-  let cells: Cell[][] = [];
-  for (let rows = 0; rows < MAX_ROWS; rows++) {
-    cells.push([]);
-    for (let cols = 0; cols < MAX_COLS; cols++) {
-      cells[rows].push({
-        value: CellValue.none,
-        state: CellState.open,
-      });
-    }
-  }
-
-  // PLACE MINES
-  let minesPlaced = 0;
-  while (minesPlaced < NUM_MINES) {
-    const randomRow = Math.floor(Math.random() * MAX_ROWS);
-    const randomCol = Math.floor(Math.random() * MAX_COLS);
-    const currentCell = cells[randomRow][randomCol];
-    if (currentCell.value !== CellValue.bomb) {
-      cells = cells.map((row, rowindex) =>
-        row.map((cell, colindex) => {
-          if (randomRow == rowindex && randomCol == colindex) {
-            return {
-              ...cell,
-              value: CellValue.bomb,
-            };
-          }
-          return cell;
-        })
-      );
-      minesPlaced++;
-    }
-  }
-
-  // CALCULATE NUMBERS IN CELLS
-  for (let rIndex = 0; rIndex < MAX_ROWS; rIndex++) {
-    for (let cIndex = 0; cIndex < MAX_COLS; cIndex++) {
-      const currentCell = cells[rIndex][cIndex];
-      if (currentCell.value == CellValue.bomb) {
-        continue;
-      }
-      let numBombs = 0;
-      const NW =
-        rIndex > 0 && cIndex > 0 ? cells[rIndex - 1][cIndex - 1] : null;
-      const N = rIndex > 0 ? cells[rIndex - 1][cIndex] : null;
-      const NE =
-        rIndex > 0 && cIndex < MAX_COLS - 1
-          ? cells[rIndex - 1][cIndex + 1]
-          : null;
-      const W = cIndex > 0 ? cells[rIndex][cIndex - 1] : null;
-      const E = cIndex < MAX_COLS - 1 ? cells[rIndex][cIndex + 1] : null;
-      const SW =
-        rIndex < MAX_ROWS - 1 && cIndex > 0
-          ? cells[rIndex + 1][cIndex - 1]
-          : null;
-      const S = rIndex < MAX_ROWS - 1 ? cells[rIndex + 1][cIndex] : null;
-      const SE =
-        rIndex < MAX_ROWS - 1 && cIndex < MAX_COLS - 1
-          ? cells[rIndex + 1][cIndex + 1]
-          : null;
-
-      if (NW && NW.value == CellValue.bomb) {
-        numBombs++;
-      }
-      if (N && N.value == CellValue.bomb) {
-        numBombs++;
-      }
-      if (NE && NE.value == CellValue.bomb) {
-        numBombs++;
-      }
-      if (W && W.value == CellValue.bomb) {
-        numBombs++;
-      }
-      if (E && E.value == CellValue.bomb) {
-        numBombs++;
-      }
-      if (SW && SW.value == CellValue.bomb) {
-        numBombs++;
-      }
-      if (S && S.value == CellValue.bomb) {
-        numBombs++;
-      }
-      if (SE && SE.value == CellValue.bomb) {
-        numBombs++;
-      }
-
-      if (numBombs > 0) {
-        cells[rIndex][cIndex] = {
-          ...currentCell,
-          value: numBombs,
-        };
-      }
-    }
-  }
-
-  return cells;
-};
+// Episode 3: 41:20
 
 const App: React.FC = () => {
-  const [cells, setCells] = useState(generateCells());
+  const [cells, setCells] = useState<Cell[][]>(generateCells());
+  const [face, setFace] = useState<Face>(Face.smile);
+  const [time, setTime] = useState<number>(0);
+  const [live, setLive] = useState<boolean>(false);
+  const [mineCounter, setMineCounter] = useState<number>(10);
+
+  useEffect(() => {
+    const handleMouseDown = () => {
+      setFace(Face.oh);
+    };
+    const handleMouseUp = () => {
+      setFace(Face.smile);
+    };
+    window.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (live && time < 999) {
+      const timer = setInterval(() => {
+        setTime(time + 1);
+      }, 1000);
+
+      return () => {
+        clearInterval(timer);
+      };
+    }
+  }, [live, time]);
+
+  const handleCellClick = (rowParam: number, colParam: number) => (): void => {
+    if (!live) {
+      setLive(true);
+    }
+  };
+
+  const handleCellContext = (rowParam: number, colParam: number) => (
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>
+  ): void => {
+    e.preventDefault();
+
+    const currentCells = cells.slice();
+    const currentCell = cells[rowParam][colParam];
+    if (currentCell.state == CellState.visible) {
+      return;
+    } else if (currentCell.state == CellState.open && mineCounter > 0) {
+      currentCells[rowParam][colParam].state = CellState.flagged;
+      setCells(currentCells);
+      setMineCounter(mineCounter - 1);
+    } else if (currentCell.state == CellState.flagged) {
+      currentCells[rowParam][colParam].state = CellState.open;
+      setCells(currentCells);
+      setMineCounter(mineCounter + 1);
+    }
+  };
+
+  const handleFaceClick = (): void => {
+    if (live) {
+      setLive(false);
+      setTime(0);
+      setCells(generateCells());
+    }
+  };
 
   const renderCells = (): React.ReactNode => {
     return cells.map((row, rowIndex) =>
@@ -118,22 +84,23 @@ const App: React.FC = () => {
           value={cell.value}
           row={rowIndex}
           col={colIndex}
+          onClick={handleCellClick}
+          onContext={handleCellContext}
         />
       ))
     );
   };
 
-  console.log(cells);
   return (
     <div className="app">
       <div className="header">
-        <NumberDisplay value={0} />
-        <div className="face">
+        <NumberDisplay value={mineCounter} />
+        <div className="face" onClick={handleFaceClick}>
           <span role="img" aria-label="face">
-            😀
+            {face}
           </span>
         </div>
-        <NumberDisplay value={23} />
+        <NumberDisplay value={time} />
       </div>
       <div className="body">{renderCells()}</div>
     </div>
